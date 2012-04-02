@@ -62,7 +62,7 @@ def human_num(num, divisor=1, power=""):
         elif divisor == 1024:
                 powers = ["  ", "Ki", "Mi", "Gi", "Ti", "Pi"]
         else:
-                raise ValueError, "Invalid divisor"
+                raise ValueError("Invalid divisor")
 
         if not power:
                 power = powers[0]
@@ -82,10 +82,10 @@ def GetLoadAverage():
         return load
 
 
-def logs():
+def logs(logdir=None):
         """ Cumtomizing logging """
-
-        logdir = os.environ['HOME'] + '/logs/' + time.strftime("%Y") + '/' + time.strftime("%m%d")
+        if logdir is None:
+                logdir = os.environ['HOME'] + '/logs/' + time.strftime("%Y") + '/' + time.strftime("%m%d")
 
         if os.path.exists(logdir) is False:
                 os.makedirs(logdir, 0755)
@@ -184,8 +184,6 @@ if __name__ == '__main__':
 
         print human_num(378682763, 1024) + 'B'
 
-        """
-       log = logs()
-       log.error('Error: asd')
-       log.info('INFO: ad')
-        """
+        log = logs()
+        log.error('Error: asd')
+        log.info('INFO: ad')
