@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # pydig: A small DNS query tool.
-# 
+#
 # Copyright (C) 2006 - 2012, Shumon Huque
 #
 # pydig is free software; you can redistribute it and/or modify it
@@ -20,20 +20,28 @@
 # MA 02110-1301, USA.
 #
 # Author: Shumon Huque <shuque -@- upenn.edu>
-# 
+#
 
-import os, sys, socket, struct, time, string, base64, hashlib, random
+import os
+import sys
+import socket
+import struct
+import time
+import string
+import base64
+import hashlib
+import random
 
-PROGNAME       = os.path.basename(sys.argv[0])
-PROGDESC       = "a DNS query tool written in Python"
-VERSION        = "0.5"
-RESOLV_CONF    = "/etc/resolv.conf"    # where to find default server
-DEFAULT_PORT   = 53
-ITIMEOUT       = 0.5                   # initial timeout in seconds
-RETRIES        = 3                     # how many times to try
-BUFSIZE        = 4096                  # socket read/write buffer size
-EDNS0_UDPSIZE  = 4096
-DEBUG          = False                 # for more debugging output (-d)
+PROGNAME = os.path.basename(sys.argv[0])
+PROGDESC = "a DNS query tool written in Python"
+VERSION = "0.5"
+RESOLV_CONF = "/etc/resolv.conf"    # where to find default server
+DEFAULT_PORT = 53
+ITIMEOUT = 0.5                   # initial timeout in seconds
+RETRIES = 3                     # how many times to try
+BUFSIZE = 4096                  # socket read/write buffer size
+EDNS0_UDPSIZE = 4096
+DEBUG = False                 # for more debugging output (-d)
 
 count_compression = 0                  # count of compression pointers derefs
 
@@ -68,12 +76,14 @@ Options:
 
 
 def dprint(input):
-    if DEBUG:        print "DEBUG:", input
+    if DEBUG:
+        print "DEBUG:", input
 
 
 class ErrorMessage(Exception):
     """A friendly error message."""
     name = PROGNAME
+
     def __str__(self):
         val = Exception.__str__(self)
         if val:
@@ -110,15 +120,16 @@ options = dict(server=None, port=DEFAULT_PORT, use_tcp=False,
                tsig_file=None, tsig_sigtime=None, tsig_info=None,
                unsigned_messages="", msgid=None)
 
+
 class DNSparam:
     """Class to encapsulate some DNS parameter types (type, class etc)"""
 
     def __init__(self, prefix, name2val):
         self.name2val = name2val
-        self.val2name = dict([(y,x) for (x,y) in name2val.items()])
+        self.val2name = dict([(y, x) for (x, y) in name2val.items()])
         self.prefix = prefix
         self.prefix_offset = len(prefix)
-        
+
     def get_name(self, val):
         """given code (value), return text name of dns parameter"""
         if self.prefix:
@@ -151,32 +162,37 @@ rc = DNSparam("RCODE",
               dict(NOERROR=0, FORMERR=1, SERVFAIL=2, NXDOMAIN=3, NOTIMPL=4,
                    REFUSED=5, NOTAUTH=9, BADVERS=16, BADKEY=17, BADTIME=18,
                    BADMODE=19, BADNAME=20, BADALG=21, BADTRUNC=22))
-                
-dnssec_proto = { 0:"Reserved", 1:"TLS", 2:"Email", 3:"DNSSEC", 4:"IPSEC" }
 
-dnssec_alg = { 0:"Reserved", 1:"RSAMD5", 2:"DH", 3:"DSA", 4:"ECC",
-               5:"RSASHA1", 6:"DSA-NSEC3-SHA1", 7:"RSASHA1-NSEC3-SHA1",
-               8:"RSASHA256", 10:"RSASHA512", 12:"ECC-GOST" }
+dnssec_proto = {0: "Reserved", 1: "TLS", 2: "Email", 3: "DNSSEC", 4: "IPSEC"}
 
-dnssec_digest = { 1:"SHA-1", 2:"SHA-256" }              # see RFC 4509
+dnssec_alg = {0: "Reserved", 1: "RSAMD5", 2: "DH", 3: "DSA", 4: "ECC",
+               5: "RSASHA1", 6: "DSA-NSEC3-SHA1", 7: "RSASHA1-NSEC3-SHA1",
+               8: "RSASHA256", 10: "RSASHA512", 12: "ECC-GOST"}
 
-sshfp_alg = { 1:"RSA", 2:"DSS" }                        # see RFC 4255
+# see RFC 4509
+dnssec_digest = {1: "SHA-1", 2: "SHA-256"}
 
-sshfp_fptype = { 1:"SHA-1" }                            # see RFC 4255
+# see RFC 4255
+sshfp_alg = {1: "RSA", 2: "DSS"}
+
+# see RFC 4255
+sshfp_fptype = {1: "SHA-1"}
 
 # TSIG algorithms: see RFC 2845 (hmac-md5), 3645 (gss-tsig), 4635 (hmac-sha*)
 # So far, pydig implements only the most commonly used hmac-md5.
-dns_tsig_alg = { "hmac-md5"    : "hmac-md5.sig-alg.reg.int.",
-                 "gss-tsig"    : "gss-tsig.",
-                 "hmac-sha1"   : "hmac-sha1.",
-                 "hmac-sha224" : "hmac-sha224.",
-                 "hmac-sha256" : "hmac-sha256.",
-                 "hmac-sha384" : "hmac-sha384.",
-                 "hmac-sha512" : "hmac-sha512." }
+dns_tsig_alg = {"hmac-md5": "hmac-md5.sig-alg.reg.int.",
+                 "gss-tsig": "gss-tsig.",
+                 "hmac-sha1": "hmac-sha1.",
+                 "hmac-sha224": "hmac-sha224.",
+                 "hmac-sha256": "hmac-sha256.",
+                 "hmac-sha384": "hmac-sha384.",
+                 "hmac-sha512": "hmac-sha512."}
+
 
 class Struct:
     "Just to emulate C struct or record ..."
     pass
+
 
 class Tsig:
     """TSIG Object Class: encapsulates TSIG related methods and data"""
@@ -241,7 +257,7 @@ class Tsig:
                             (tsig_name, tsig_type, tsig_class, tsig_ttl,
                              rdlen, rdata)
         return self.request.tsig
-    
+
     def decode_tsig_rdata(self, pkt, offset, rdlen, tsig_name, tsig_offset):
         """decode TSIG rdata: alg, sigtime, fudge, mac_size, mac, origid,
         error, otherlen; see RFC 2845"""
@@ -255,16 +271,16 @@ class Tsig:
         if self.response.alg.lower() != self.algorithm:
             raise ErrorMessage("%s -- unexpected TSIG algorithm" %
                                self.response.alg)
-        self.response.sigtime = packed2int(pkt[offset:offset+6])
+        self.response.sigtime = packed2int(pkt[offset:offset + 6])
         offset += 6
         self.response.fudge, self.response.mac_size = \
-                             struct.unpack("!HH", pkt[offset:offset+4])
+                             struct.unpack("!HH", pkt[offset:offset + 4])
         offset += 4
-        self.response.mac = pkt[offset:offset+self.response.mac_size]
+        self.response.mac = pkt[offset:offset + self.response.mac_size]
         mac_base64 = base64.standard_b64encode(self.response.mac)
         offset += self.response.mac_size
         self.response.origid, self.response.error, self.response.otherlen \
-                              = struct.unpack("!HHH", pkt[offset:offset+6])
+                              = struct.unpack("!HHH", pkt[offset:offse + 6])
         offset += 6
         result = "%s %ld %d %d %s %d %s %d" % \
                  (self.response.alg,
@@ -276,7 +292,7 @@ class Tsig:
                   rc.get_name(self.response.error),
                   self.response.otherlen)
         if self.response.otherlen != 0:          # only for BADTIME ercode
-            self.response.otherdata = str(pkt[offset:offset+otherlen])
+            self.response.otherdata = str(pkt[offset:offset + otherlen])
             result += self.response.otherdata
         else:
             self.response.otherdata = ""
@@ -288,7 +304,7 @@ class Tsig:
         Reconstruct packet before TSIG record was added, and with origid;
         add TSIG variables, and request MAC; compute digest and compare it
         with received digest."""
-    
+
         if not domain_name_match(self.response.tsig_name, self.keyname):
             raise ErrorMessage("encountered unknown TSIG key name: %s" %
                                self.response.tsig_name)
@@ -301,7 +317,7 @@ class Tsig:
         arcount, = struct.unpack('!H', data[10:12])
         dns_message = "%s%s%s%s" % \
                       (struct.pack('!H', self.response.origid), data[2:10],
-                       struct.pack('!H', arcount-1), data[12:])
+                       struct.pack('!H', arcount - 1), data[12:])
 
         tsig_name = txt2domainname(self.response.tsig_name,
                                    canonical_form=True)
@@ -345,29 +361,50 @@ def parse_args(arglist):
     global DEBUG
     qtype = "A"
     qclass = "IN"
-    
-    i=0
+
+    i = 0
     for (i, arg) in enumerate(arglist):
-        if arg.startswith('@'):            options["server"] = arg[1:]
-        elif arg == "-h":                  raise UsageError()
-        elif arg.startswith("-p"):         options["port"] = int(arg[2:])
-        elif arg == "+tcp":                options["use_tcp"] = True
-        elif arg == "+aaonly":             options["aa"] = 1
-        elif arg == "+cdflag":             options["cd"] = 1
-        elif arg == "+norecurse":          options["rd"] = 0
-        elif arg == "+edns0":              options["use_edns0"] = True
-        elif arg == "+dnssec":             options["dnssec_ok"] = 1; options["use_edns0"] = True
-        elif arg == "+hex":                options["hexrdata"] = True
-        elif arg == "+walk":               options["do_zonewalk"] = True
-        elif arg == "+0x20":               options["do_0x20"] = True
-        elif arg == "-4":                  options["af"] = socket.AF_INET
-        elif arg == "-6":                  options["af"] = socket.AF_INET6
-        elif arg == "-x":                  options["ptr"] = True
-        elif arg == "-d":                  DEBUG = True
-        elif arg.startswith("-k"):         options["tsig_file"] = arg[2:]
-        elif arg.startswith("-i"):         options["msgid"] = int(arg[2:])
-        elif arg.startswith("-t"):         options["tsig_time"] = int(arg[2:])
-        elif arg.startswith("-y"):         options["tsig_info"] = arg[2:]
+        if arg.startswith('@'):
+            options["server"] = arg[1:]
+        elif arg == "-h":
+            raise UsageError()
+        elif arg.startswith("-p"):
+            options["port"] = int(arg[2:])
+        elif arg == "+tcp":
+            options["use_tcp"] = True
+        elif arg == "+aaonly":
+            options["aa"] = 1
+        elif arg == "+cdflag":
+            options["cd"] = 1
+        elif arg == "+norecurse":
+            options["rd"] = 0
+        elif arg == "+edns0":
+            options["use_edns0"] = True
+        elif arg == "+dnssec":
+            options["dnssec_ok"] = 1
+            options["use_edns0"] = True
+        elif arg == "+hex":
+            options["hexrdata"] = True
+        elif arg == "+walk":
+            options["do_zonewalk"] = True
+        elif arg == "+0x20":
+            options["do_0x20"] = True
+        elif arg == "-4":
+            options["af"] = socket.AF_INET
+        elif arg == "-6":
+            options["af"] = socket.AF_INET6
+        elif arg == "-x":
+            options["ptr"] = True
+        elif arg == "-d":
+            DEBUG = True
+        elif arg.startswith("-k"):
+            options["tsig_file"] = arg[2:]
+        elif arg.startswith("-i"):
+            options["msgid"] = int(arg[2:])
+        elif arg.startswith("-t"):
+            options["tsig_time"] = int(arg[2:])
+        elif arg.startswith("-y"):
+            options["tsig_info"] = arg[2:]
         else:
             break
 
@@ -395,17 +432,22 @@ def parse_args(arglist):
     qname = arglist[i]
 
     if not options["do_zonewalk"]:
-        if arglist[i+1:]:           qtype = arglist[i+1].upper()
-        if arglist[i+2:]:           qclass = arglist[i+2].upper()
+        if arglist[i + 1:]:
+            qtype = arglist[i + 1].upper()
+        if arglist[i + 2:]:
+            qclass = arglist[i + 2].upper()
 
     if options["ptr"]:
-        qname = ip2ptr(qname); qtype = "PTR"; qclass = "IN"
+        qname = ip2ptr(qname)
+        qtype = "PTR"
+        qclass = "IN"
     else:
-        if not qname.endswith("."): qname += "."
+        if not qname.endswith("."):
+            qname += "."
 
     return (qname, qtype, qclass)
 
-    
+
 def hexdump(input, separator=' '):
     """return a hexadecimal representation of the given string"""
     hexlist = ["%02x" % ord(x) for x in input]
@@ -416,7 +458,7 @@ def packed2int(input):
     """convert arbitrary sized bigendian packed string into an integer"""
     sum = 0
     for (i, x) in enumerate(input[::-1]):
-        sum += ord(x) * 2**(8*i)
+        sum += ord(x) * 2 ** (8 * i)
     return sum
 
 
@@ -427,7 +469,7 @@ def randomize_case(input):
     random.seed()
     for c in input:
         if c.isalpha():
-            if random.choice([0,1]):
+            if random.choice([0, 1]):
                 outlist.append(chr((ord(c) ^ 0x20)))
                 continue
         outlist.append(c)
@@ -439,7 +481,7 @@ def domain_name_match(s1, s2, case_sensitive=False):
         return (s1 == s2)
     else:
         return (s1.lower() == s2.lower())
-    
+
 
 def mk_id():
     """Return a 16-bit ID number to be used by the DNS request packet"""
@@ -447,7 +489,7 @@ def mk_id():
         return options["msgid"]
     else:
         random.seed()
-        return random.randint(1,65535)
+        return random.randint(1, 65535)
 
 
 def ip2ptr(address):
@@ -471,7 +513,7 @@ def ip2ptr(address):
         error = True
     if error:
         raise ErrorMessage("%s isn't an IPv4 or IPv6 address" % address)
-    
+
     return ptrowner
 
 
@@ -483,7 +525,7 @@ def get_socketparams(server, port, af, type):
     server_addr, port = sockaddr[0:2]
     return (server_addr, port, family, socktype)
 
-    
+
 def send_request_udp(pkt, host, port, family, itimeout, retries):
     """Send the request via UDP, with retries using exponential backoff"""
     gotresponse = False
@@ -522,7 +564,7 @@ def send_request_tcp(pkt, host, port, family):
         raise ErrorMessage("tcp socket error: %s" % diag)
     s.close()
     return response
-        
+
 
 def do_axfr(pkt, host, port, family):
     """AXFR uses TCP, and is answered by a sequence of response messages."""
@@ -569,16 +611,18 @@ def decode_axfr(response, resplen):
             msgsizes["max"] = msglen
             msgsizes["min"] = msglen
         else:
-            if msglen > msgsizes["max"]: msgsizes["max"] = msglen
-            if msglen < msgsizes["min"]: msgsizes["min"] = msglen
+            if msglen > msgsizes["max"]:
+                msgsizes["max"] = msglen
+            if msglen < msgsizes["min"]:
+                msgsizes["min"] = msglen
         msgsizes["total"] += msglen
-        msg = p[2:2+msglen]
+        msg = p[2:2 + msglen]
         answerid, qr, opcode, aa, tc, rd, ra, z, ad, cd, rcode, \
                   qdcount, ancount, nscount, arcount = \
                   decode_header(msg, -1, checkid=False)
         if rcode != 0:
             raise ErrorMessage("Zone transfer failed: %s" % rc.get_name(rcode))
-        
+
         offset = 12                     # skip over DNS header
 
         for i in range(qdcount):
@@ -591,7 +635,7 @@ def decode_axfr(response, resplen):
                   (pdomainname(domainname), ttl,
                    qc.get_name(rrclass), qt.get_name(rrtype), rdata)
         rrtotal += ancount
-        
+
         # For AXFR, we don't care about the authority & additional sections.
         # However, if using TSIG, we want to decode and verify the TSIG
         # pseudo RR in the additional section if present.
@@ -599,7 +643,8 @@ def decode_axfr(response, resplen):
         tsig_seen = False
         for section, rrcount in \
             [("authority", nscount), ("additional", arcount)]:
-            if rrcount == 0: continue
+            if rrcount == 0:
+                continue
             for i in range(rrcount):
                 domainname, rrtype, rrclass, ttl, rdata, offset = \
                             decode_rr(msg, offset, False)
@@ -611,26 +656,28 @@ def decode_axfr(response, resplen):
                     unsigned_messages = ""
         if options["do_tsig"] and (not tsig_seen):
             options["unsigned_messages"] += msg
-        p = p[2+msglen:]
+        p = p[2 + msglen:]
 
     print "\n;; Total RRs transferred: %d, Total messages: %d" % \
           (rrtotal, msgtotal)
     print ";; Message sizes: %d max, %d min, %d average" % \
-          (msgsizes["max"], msgsizes["min"], msgsizes["total"]/msgtotal)
+          (msgsizes["max"], msgsizes["min"], msgsizes["total"] / msgtotal)
     if options["do_tsig"]:
         print ";; TSIG records: %d, success: %d, failure: %d" % \
               (tsig.tsig_total, tsig.verify_success, tsig.verify_failure)
     return
-        
+
 
 def mk_optrr(edns_version, udp_payload, dnssec_ok):
     """Create EDNS0 OPT RR with udp_payload advertisement; see RFC 2671"""
-    rrname    = '\x00'                                   # empty domain
-    rrtype    = struct.pack('!H', qt.get_val("OPT"))     # OPT type code
+    rrname = '\x00'                                   # empty domain
+    rrtype = struct.pack('!H', qt.get_val("OPT"))     # OPT type code
     rrclass = struct.pack('!H', udp_payload)             # udp payload
-    if dnssec_ok: z = 0x8000
-    else:         z = 0x0
-    ttl   = struct.pack('!BBH', 0, edns_version, z)      # extended rcode
+    if dnssec_ok:
+        z = 0x8000
+    else:
+        z = 0x0
+    ttl = struct.pack('!BBH', 0, edns_version, z)      # extended rcode
     rdlen = struct.pack('!H', 0)                         # rdlen=0
     return "%s%s%s%s%s" % (rrname, rrtype, rrclass, ttl, rdlen)
 
@@ -640,7 +687,8 @@ def print_optrr(rrclass, ttl, rdata):
     packed_ttl = struct.pack('!I', ttl)
     ercode, version, z = struct.unpack('!BBH', packed_ttl)
     flags = []
-    if z & 0x8000: flags.append("do")                  # DNSSEC OK bit
+    if z & 0x8000:
+        flags.append("do")                  # DNSSEC OK bit
     print ";; OPT pseudo RR: edns_version=%d, udp_payload=%d, flags=%s, ercode=%d" % \
           (version, rrclass, ' '.join(flags), ercode)
 
@@ -677,7 +725,7 @@ def mk_request(qname, qtype_val, qclass, id, options):
 
     question = "%s%s%s" % (wire_qname, struct.pack('!H', qtype_val),
                            struct.pack('!H', qclass))
-        
+
     msg = "%s%s%s%s%s%s%s%s" % \
           (packed_id, flags, qdcount, ancount, nscount, arcount,
            question, additional)
@@ -685,12 +733,12 @@ def mk_request(qname, qtype_val, qclass, id, options):
     if options["do_tsig"]:                      # sign message with TSIG
         tsig_rr = tsig.mk_request_tsig(id, msg)
         arcount, = struct.unpack('!H', arcount)
-        arcount = struct.pack('!H', arcount+1)
+        arcount = struct.pack('!H', arcount + 1)
         additional = "%s%s" % (additional, tsig_rr)
         msg = "%s%s%s%s%s%s%s%s" % \
               (packed_id, flags, qdcount, ancount, nscount, arcount,
                question, additional)
-    
+
     return msg
 
 
@@ -718,7 +766,7 @@ def xor_string(a, b):
         result += chr(ord(x) ^ ord(y))
     return result
 
-                                
+
 def hmac_md5(key, data):
     """HMAC-MD5 algorithm; see RFC 2104"""
     BLOCKSIZE = 64                             # 64 bytes = 512 bits
@@ -744,7 +792,7 @@ def decode_header(pkt, sentid, checkid=True):
     if checkid and (answerid != sentid):
         # probably should continue listening for a valid response
         # rather than bailing out here ..
-        raise ErrorMessage("got response with id: %ld (expecting %ld)" % 
+        raise ErrorMessage("got response with id: %ld (expecting %ld)" %
                            (answerid, sentid))
 
     qr = answerflags >> 15
@@ -753,7 +801,7 @@ def decode_header(pkt, sentid, checkid=True):
     tc = (answerflags >> 9) & 0x1
     rd = (answerflags >> 8) & 0x1
     ra = (answerflags >> 7) & 0x1
-    z  = (answerflags >> 6) & 0x1
+    z = (answerflags >> 6) & 0x1
     ad = (answerflags >> 5) & 0x1
     cd = (answerflags >> 4) & 0x1
     rcode = (answerflags) & 0xf
@@ -785,15 +833,15 @@ def get_domainname(pkt, offset):
         llen, = struct.unpack('B', pkt[offset])
         if (llen >> 6) == 0x3:                 # compression pointer, sec 4.1.4
             count_compression += 1
-            c_offset, = struct.unpack('!H', pkt[offset:offset+2])
+            c_offset, = struct.unpack('!H', pkt[offset:offset + 2])
             c_offset = c_offset & 0x3fff       # last 14 bits
-            offset +=2
+            offset += 2
             rightmostlabels, junk = get_domainname(pkt, c_offset)
             labellist += rightmostlabels
             Done = True
         else:
             offset += 1
-            label = pkt[offset:offset+llen]
+            label = pkt[offset:offset + llen]
             offset += llen
             labellist.append(label)
             if llen == 0:
@@ -812,7 +860,7 @@ def pdomainname(labels):
 def decode_question(pkt, offset):
     """decode question section of a DNS message"""
     domainname, offset = get_domainname(pkt, offset)
-    rrtype, rrclass = struct.unpack("!HH", pkt[offset:offset+4])
+    rrtype, rrclass = struct.unpack("!HH", pkt[offset:offset + 4])
     offset += 4
     return (domainname, rrtype, rrclass, offset)
 
@@ -821,7 +869,7 @@ def generic_rdata_encoding(rdata, rdlen):
     """return generic encoding of rdata for unknown types; see RFC 3597"""
     return "\# %d %s" % (rdlen, hexdump(rdata, separator=''))
 
-    
+
 def decode_txt_rdata(rdata, rdlen):
     """decode TXT RR rdata into a string of quoted text strings,
     escaping any embedded double quotes"""
@@ -829,7 +877,7 @@ def decode_txt_rdata(rdata, rdlen):
     position = 0
     while position < rdlen:
         slen, = struct.unpack('B', rdata[position])
-        s = rdata[position+1:position+1+slen]
+        s = rdata[position + 1:position + 1 + slen]
         s = '"%s"' % s.replace('"', '\\"')
         txtstrings.append(s)
         position += 1 + slen
@@ -843,23 +891,23 @@ def decode_soa_rdata(pkt, offset, rdlen):
     d, offset = get_domainname(pkt, offset)
     rname = pdomainname(d)
     serial, refresh, retry, expire, min = \
-            struct.unpack("!IiiiI", pkt[offset:offset+20])
+            struct.unpack("!IiiiI", pkt[offset:offset + 20])
     return "%s %s %d %d %d %d %d" % \
            (mname, rname, serial, refresh, retry, expire, min)
-    
+
 
 def decode_srv_rdata(pkt, offset):
     """decode SRV rdata: priority (2), weight (2), port, target; RFC 2782"""
-    priority, weight, port = struct.unpack("!HHH", pkt[offset:offset+6])
-    d, offset = get_domainname(pkt, offset+6)
+    priority, weight, port = struct.unpack("!HHH", pkt[offset:offset + 6])
+    d, offset = get_domainname(pkt, offset + 6)
     target = pdomainname(d)
     return "%d %d %d %s" % (priority, weight, port, target)
 
 
 def decode_sshfp_rdata(pkt, offset, rdlen):
     """decode SSHFP rdata: alg, fp_type, fingerprint; see RFC 4255"""
-    alg, fptype = struct.unpack('BB', pkt[offset:offset+2])
-    fingerprint = hexdump(pkt[offset+2:offset+rdlen], separator='')
+    alg, fptype = struct.unpack('BB', pkt[offset:offset + 2])
+    fingerprint = hexdump(pkt[offset + 2:offset + rdlen], separator='')
     if DEBUG:
         rdata = "%d(%s) %d(%s) %s" % \
                 (alg, sshfp_alg.get(alg, "unknown"),
@@ -872,13 +920,13 @@ def decode_sshfp_rdata(pkt, offset, rdlen):
 def decode_naptr_rdata(pkt, offset, rdlen):
     """decode NAPTR: order, pref, flags, svc, regexp, replacement; RFC 2915"""
     param = {}
-    order, pref = struct.unpack('!HH', pkt[offset:offset+4])
-    position = offset+4
+    order, pref = struct.unpack('!HH', pkt[offset:offset + 4])
+    position = offset + 4
     for name in ["flags", "svc", "regexp"]:
         slen, = struct.unpack('B', pkt[position])
-        s = pkt[position+1:position+1+slen]
+        s = pkt[position + 1:position + 1 + slen]
         param[name] = '"%s"' % s.replace('\\', '\\\\')
-        position += (1+slen)
+        position += (1 + slen)
     d, junk = get_domainname(pkt, position)
     replacement = pdomainname(d)
     return "%d %d %s %s %s %s" % (order, pref, param["flags"], param["svc"],
@@ -887,15 +935,15 @@ def decode_naptr_rdata(pkt, offset, rdlen):
 
 def decode_ipseckey_rdata(pkt, offset, rdlen):
     """decode IPSECKEY rdata; see RFC 4025"""
-    prec, gwtype, alg = struct.unpack('BBB', pkt[offset:offset+3])
-    position = offset+3
+    prec, gwtype, alg = struct.unpack('BBB', pkt[offset:offset + 3])
+    position = offset + 3
     if gwtype == 0:                            # no gateway present
         gw = "."
     elif gwtype == 1:                          # 4-byte IPv4 gw
-        gw = socket.inet_ntop(socket.AF_INET, pkt[position:position+4])
+        gw = socket.inet_ntop(socket.AF_INET, pkt[position:position + 4])
         position += 4
     elif gwtype == 2:                          # 16-byte IPv6 gw
-        gw = socket.inet_ntop(socket.AF_INET6, pkt[position:position+16])
+        gw = socket.inet_ntop(socket.AF_INET6, pkt[position:position + 16])
         position += 16
     elif gwtype == 3:                          # domainname
         d, position = get_domainname(pkt, position)
@@ -904,26 +952,26 @@ def decode_ipseckey_rdata(pkt, offset, rdlen):
         pubkey = ""
     else:
         pubkeylen = rdlen - (position - offset)
-        pubkey = base64.standard_b64encode(pkt[position:position+pubkeylen])
+        pubkey = base64.standard_b64encode(pkt[position:position + pubkeylen])
     return "%d %d %d %s %s" % (prec, gwtype, alg, gw, pubkey)
 
 
 def decode_dnskey_rdata(pkt, offset, rdlen):
     """decode DNSKEY rdata: flags, proto, alg, pubkey; see RFC 4034"""
-    flags, proto, alg = struct.unpack('!HBB', pkt[offset:offset+4])
-    pubkey = pkt[offset+4:offset+rdlen]
+    flags, proto, alg = struct.unpack('!HBB', pkt[offset:offset + 4])
+    pubkey = pkt[offset + 4:offset + rdlen]
     if DEBUG:
-        zonekey = (flags >> 8) & 0x1;         # bit 7
-        sepkey = flags & 0x1;                 # bit 15
+        zonekey = (flags >> 8) & 0x1         # bit 7
+        sepkey = flags & 0x1                # bit 15
         if alg == 5:                          # RSA/SHA1 algorithm (RFC 3110)
             if pubkey[0] == '\x00':   # length field is 3 octets
                 elen, = struct.unpack('!H', pubkey[1:3])
-                exponent = packed2int(pubkey[1:1+elen])
+                exponent = packed2int(pubkey[1:1 + elen])
             else:
                 elen, = struct.unpack('B', pubkey[0])
-                exponent = packed2int(pubkey[1:1+elen])
+                exponent = packed2int(pubkey[1:1 + elen])
         else:
-            exponent=0
+            exponent = 0
         result = "%d %d(%s) %d(%s) e=%d %s" % \
                  (flags, proto, dnssec_proto[proto], alg, dnssec_alg[alg],
                   exponent, base64.standard_b64encode(pubkey))
@@ -935,8 +983,8 @@ def decode_dnskey_rdata(pkt, offset, rdlen):
 
 def decode_ds_rdata(pkt, offset, rdlen):
     """decode DS rdata: keytag, alg, digesttype, digest; see RFC 4034"""
-    keytag, alg, digesttype = struct.unpack('!HBB', pkt[offset:offset+4])
-    digest = hexdump(pkt[offset+4:offset+rdlen], separator='')
+    keytag, alg, digesttype = struct.unpack('!HBB', pkt[offset:offset + 4])
+    digest = hexdump(pkt[offset + 4:offset + rdlen], separator='')
     if DEBUG:
         result = "%d %d(%s) %d(%s) %s" % \
                  (keytag, alg, dnssec_alg[alg], digesttype,
@@ -950,10 +998,10 @@ def decode_rrsig_rdata(pkt, offset, rdlen):
     """decode RRSIG rdata; see RFC 4034"""
     end_rdata = offset + rdlen
     type_covered, alg, labels, orig_ttl, sig_exp, sig_inc, keytag = \
-          struct.unpack('!HBBIIIH', pkt[offset:offset+18])
+          struct.unpack('!HBBIIIH', pkt[offset:offset + 18])
     sig_exp = time.strftime("%Y%m%d%H%M%S", time.gmtime(sig_exp))
     sig_inc = time.strftime("%Y%m%d%H%M%S", time.gmtime(sig_inc))
-    d, offset = get_domainname(pkt, offset+18)
+    d, offset = get_domainname(pkt, offset + 18)
     signer_name = pdomainname(d)
     signature = pkt[offset:end_rdata]
     return "%s %d %d %d %s %s %d %s %s" % \
@@ -985,19 +1033,19 @@ def decode_nsec_rdata(pkt, offset, rdlen):
     rrtypelist = []
     while p:
         windownum, winlen = struct.unpack('BB', p[0:2])
-        bitmap = p[2:2+winlen]
+        bitmap = p[2:2 + winlen]
         rrtypelist += decode_typebitmap(windownum, bitmap)
-        p = p[2+winlen:]
+        p = p[2 + winlen:]
     return "%s %s" % (nextrr, ' '.join(rrtypelist))
 
 
 def decode_nsec3param_rdata(pkt, offset, rdlen):
     """decode NSEC3PARAM rdata: hash, flags, iterations, salt len, salt;
     see RFC 5155 Section 4.2"""
-    
+
     hashalg, flags, iterations, saltlen = struct.unpack('!BBHB',
-                                                        pkt[offset:offset+5])
-    salt = hexdump(pkt[offset+5:offset+5+saltlen], separator='')
+                                                        pkt[offset:offset + 5])
+    salt = hexdump(pkt[offset + 5:offset + 5 + saltlen], separator='')
     result = "%d %d %d %s" % (hashalg, flags, iterations, salt)
     return result
 
@@ -1014,13 +1062,13 @@ def decode_nsec3_rdata(pkt, offset, rdlen):
 
     end_rdata = offset + rdlen
     hashalg, flags, iterations, saltlen = struct.unpack('!BBHB',
-                                                        pkt[offset:offset+5])
-    salt = hexdump(pkt[offset+5:offset+5+saltlen], separator='')
+                                                        pkt[offset:offset + 5])
+    salt = hexdump(pkt[offset + 5:offset + 5 + saltlen], separator='')
     offset += (5 + saltlen)
-    hashlen, = struct.unpack('!B', pkt[offset:offset+1])
+    hashlen, = struct.unpack('!B', pkt[offset:offset + 1])
     offset += 1
     # hashed next owner name, base32 encoded with extended hex alphabet
-    hashed_next_owner = base64.b32encode(pkt[offset:offset+hashlen])
+    hashed_next_owner = base64.b32encode(pkt[offset:offset + hashlen])
     hashed_next_owner = hashed_next_owner.translate(b32_to_ext_hex)
     offset += hashlen
     type_bitmap = pkt[offset:end_rdata]
@@ -1028,9 +1076,9 @@ def decode_nsec3_rdata(pkt, offset, rdlen):
     rrtypelist = []
     while p:
         windownum, winlen = struct.unpack('BB', p[0:2])
-        bitmap = p[2:2+winlen]
+        bitmap = p[2:2 + winlen]
         rrtypelist += decode_typebitmap(windownum, bitmap)
-        p = p[2+winlen:]
+        p = p[2 + winlen:]
     rrtypes = ' '.join(rrtypelist)
     result = "%d %d %d %s %s %s" % \
              (hashalg, flags, iterations, salt, hashed_next_owner, rrtypes)
@@ -1043,9 +1091,9 @@ def decode_rr(pkt, offset, hexrdata):
     orig_offset = offset
     domainname, offset = get_domainname(pkt, offset)
     rrtype, rrclass, ttl, rdlen = \
-            struct.unpack("!HHIH", pkt[offset:offset+10])
+            struct.unpack("!HHIH", pkt[offset:offset + 10])
     offset += 10
-    rdata = pkt[offset:offset+rdlen]
+    rdata = pkt[offset:offset + rdlen]
     if hexrdata:
         rdata = hexdump(rdata)
     elif rrtype == 1:                                        # A
@@ -1056,8 +1104,8 @@ def decode_rr(pkt, offset, hexrdata):
     elif rrtype == 6:                                        # SOA
         rdata = decode_soa_rdata(pkt, offset, rdlen)
     elif rrtype == 15:                                       # MX
-        mx_pref, = struct.unpack('!H', pkt[offset:offset+2])
-        rdata, junk = get_domainname(pkt, offset+2)
+        mx_pref, = struct.unpack('!H', pkt[offset:offset + 2])
+        rdata, junk = get_domainname(pkt, offset + 2)
         rdata = "%d %s" % (mx_pref, pdomainname(rdata))
     elif rrtype in [16, 99]:                                 # TXT, SPF
         rdata = decode_txt_rdata(rdata, rdlen)
@@ -1095,15 +1143,15 @@ def decode_rr(pkt, offset, hexrdata):
 
 def decode_nsec_rr(pkt, offset):
     """ Decode an NSEC resource record; used by zonewalk() routine"""
-    
+
     domainname, offset = get_domainname(pkt, offset)
     rrtype, rrclass, ttl, rdlen = \
-            struct.unpack("!HHIH", pkt[offset:offset+10])
+            struct.unpack("!HHIH", pkt[offset:offset + 10])
     if rrtype != 47:
         raise ErrorMessage("encountered RR type %s, expecting NSEC" % rrtype)
-    
+
     offset += 10
-    rdata = pkt[offset:offset+rdlen]
+    rdata = pkt[offset:offset + rdlen]
 
     end_rdata = offset + rdlen
     d, offset = get_domainname(pkt, offset)
@@ -1113,9 +1161,9 @@ def decode_nsec_rr(pkt, offset):
     rrtypelist = []
     while p:
         windownum, winlen = struct.unpack('BB', p[0:2])
-        bitmap = p[2:2+winlen]
+        bitmap = p[2:2 + winlen]
         rrtypelist += decode_typebitmap(windownum, bitmap)
-        p = p[2+winlen:]
+        p = p[2 + winlen:]
     offset += rdlen
     return (domainname, rrtype, rrclass, ttl, nextrr, rrtypelist, offset)
 
@@ -1140,7 +1188,7 @@ def print_answer_rr(server_addr, port, family, qname, qtype, options):
     if rcode != 0:
         raise ErrorMessage("got rcode=%d(%s)" %
                            (rcode, rc.get_name(rcode)))
-        
+
     r = responsepkt
     offset = 12                     # skip over DNS header
 
@@ -1159,7 +1207,7 @@ def print_answer_rr(server_addr, port, family, qname, qtype, options):
               (pdomainname(domainname), ttl,
                qc.get_name(rrclass), qt.get_name(rrtype), rdata)
     return
-    
+
 
 def zonewalk(server_addr, port, family, qname, options):
     """perform zone walk of zone containing the specified qname"""
@@ -1185,7 +1233,7 @@ def zonewalk(server_addr, port, family, qname, options):
         if rcode != 0:
             raise ErrorMessage("got rcode=%d(%s), querying %s, NSEC" %
                                (rcode, rc.get_name(rcode), qname))
-        
+
         if ancount == 0:
             raise ErrorMessage("unable to find NSEC record at %s" % qname)
         elif ancount != 1:
@@ -1202,7 +1250,7 @@ def zonewalk(server_addr, port, family, qname, options):
                     decode_nsec_rr(r, offset)
         rrname = pdomainname(domainname)
         nsec_count += 1
-        if (nsec_count !=1) and \
+        if (nsec_count != 1) and \
            (domain_name_match(rrname, nextrr) or
             domain_name_match(rrname, start_qname)):
             break
@@ -1226,21 +1274,21 @@ if __name__ == '__main__':
         qclass_val = qc.get_val(qclass)
     except (ValueError, IndexError, KeyError), diag:
         raise UsageError("Incorrect program usage! %s" % diag)
-    
+
     if options["do_0x20"]:
         qname = randomize_case(qname)
-        
+
     try:
         server_addr, port, family, socktype = \
                      get_socketparams(options["server"], options["port"],
                                       options["af"], socket.SOCK_DGRAM)
     except socket.gaierror, diag:
         raise ErrorMessage("bad server: %s (%s)" % (options["server"], diag))
-        
+
     if options["do_zonewalk"]:
         zonewalk(server_addr, port, family, qname, options)
         sys.exit(0)
-        
+
     id = mk_id()
     tc = 0
     request = mk_request(qname, qtype_val, qclass_val, id, options)
@@ -1265,7 +1313,7 @@ if __name__ == '__main__':
                   decode_header(responsepkt, id)
         if not tc:
             print ";; UDP response from %s, %d bytes, in %.3f sec" % \
-                  (responder_addr, len(responsepkt), (t2-t1))
+                  (responder_addr, len(responsepkt), (t2 - t1))
             if server_addr != "0.0.0.0" and responder_addr[0] != server_addr:
                 print "WARNING: Response from unexpected address %s" % \
                       responder_addr[0]
@@ -1277,7 +1325,7 @@ if __name__ == '__main__':
         responsepkt = send_request_tcp(request, server_addr, port, family)
         t2 = time.time()
         print ";; TCP response from %s, %d bytes, in %.3f sec" % \
-              ( (server_addr, port), len(responsepkt)-2, (t2-t1))
+              ((server_addr, port), len(responsepkt) - 2, (t2 - t1))
         responsepkt = responsepkt[2:]           # ignore 2-byte length
         answerid, qr, opcode, aa, tc, rd, ra, z, ad, cd, rcode, \
                   qdcount, ancount, nscount, arcount = \
@@ -1290,7 +1338,7 @@ if __name__ == '__main__':
           (qr, opcode, aa, tc, rd, ra, z, ad, cd)
     print ";; question=%d, answer=%d, authority=%d, additional=%d\n" % \
           (qdcount, ancount, nscount, arcount)
-    
+
     r = responsepkt
     offset = 12                     # skip over DNS header
 
@@ -1308,8 +1356,9 @@ if __name__ == '__main__':
         print "\n*** WARNING: Answer didn't match question!\n"
 
     for section, rrcount in \
-        [("answer", ancount),  ("authority", nscount), ("additional", arcount)]:
-        if rrcount == 0: continue
+        [("answer", ancount), ("authority", nscount), ("additional", arcount)]:
+        if rrcount == 0:
+            continue
         print ";; %s section (%d records)" % (section, rrcount)
         for i in range(rrcount):
             domainname, rrtype, rrclass, ttl, rdata, offset = \
