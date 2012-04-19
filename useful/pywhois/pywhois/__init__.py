@@ -12,6 +12,7 @@ def whois(url):
     text = nic_client.whois_lookup(None, domain, 0)
     return WhoisEntry.load(domain, text)
 
+
 def extract_domain(url):
     """Extract the domain from the given URL
 
